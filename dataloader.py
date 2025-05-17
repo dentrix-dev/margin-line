@@ -2,17 +2,13 @@ from scipy.interpolate import interp1d
 import torch
 from torch.utils.data import Dataset, DataLoader
 import os
-import json
 import numpy as np
 import fastmesh as fm
 from fps import fps
-import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
-import seaborn as sns
-sns.set()
+
 
 class MarginLineDataset(Dataset):
-    def __init__(self, split='train', centroids = 2048,  marginNum = 300, transform=None):
+    def __init__(self, split='train', transform=None, args=None):
         """
         Args:
             root_dir (string): Directory with all the parts (data_part_{1-6}).
@@ -20,12 +16,12 @@ class MarginLineDataset(Dataset):
             test_ids_file (string): Path to the txt file containing IDs for testing.
             transform (callable, optional): Optional transform to be applied on a sample.
         """
-        self.base_dir = "/home/waleed/Documents/3DLearning/marginline/"
+        self.base_dir = args.path
         self.split = split
         self.cases_path = os.path.join(self.base_dir, f'{split}.txt')
         self.data_dir = os.path.join(self.base_dir, 'final')
-        self.centroids = centroids
-        self.marginNum = marginNum
+        self.centroids = args.centroids
+        self.marginNum = args.marginNum
         self.transform = transform
         self.cases = self._load_cases()
         self.data_list = self._prepare_data_list()
@@ -102,13 +98,13 @@ class MarginLineDataset(Dataset):
         return vertices, marginline, tooth_n
 
 # Usage of the dataset
-def AtomicaMarginLine(centroids = 2048,  marginNum= 500, batch_size=4, num_workers=4):
+def AtomicaMarginLine(args):
     # Create training and testing datasets
-    train_dataset = MarginLineDataset(split='train', centroids = centroids,  marginNum= marginNum)
-    test_dataset = MarginLineDataset(split='test', centroids = centroids,  marginNum= marginNum)
+    train_dataset = MarginLineDataset(split='train', args = args)
+    test_dataset = MarginLineDataset(split='test', args = args)
 
     # Create DataLoader for both
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
-    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers)
+    train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers)
+    test_loader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers)
 
     return train_loader, test_loader
