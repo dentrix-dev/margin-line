@@ -18,7 +18,7 @@ parser.add_argument('--centroids', type=int, default=2048, help='Number of centr
 parser.add_argument('--marginNum', type=int, default=400, help='Number of margin points')
 parser.add_argument('--batch_size', type=int, default=32, help='Batch size')
 parser.add_argument('--num_workers', type=int, default=4, help='Number of data loading workers')
-parser.add_argument('--path', type=str, default='"/home/waleed/Documents/3DLearning/marginline/"', help='base directory for data')
+parser.add_argument('--path', type=str, default="/home/waleed/Documents/3DLearning/margin-line/final/", help='base directory for data')
 
 args = parser.parse_args()
 

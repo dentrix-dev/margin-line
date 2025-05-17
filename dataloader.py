@@ -16,10 +16,9 @@ class MarginLineDataset(Dataset):
             test_ids_file (string): Path to the txt file containing IDs for testing.
             transform (callable, optional): Optional transform to be applied on a sample.
         """
-        self.base_dir = args.path
         self.split = split
-        self.cases_path = os.path.join(self.base_dir, f'{split}.txt')
-        self.data_dir = os.path.join(self.base_dir, 'final')
+        self.cases_path = f'{split}.txt'
+        self.data_dir = args.path
         self.centroids = args.centroids
         self.marginNum = args.marginNum
         self.transform = transform
