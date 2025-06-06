@@ -1,9 +1,11 @@
 from scipy.interpolate import interp1d
 import torch
 from torch.utils.data import Dataset, DataLoader
+from torch_geometric.loader import DataLoader as PyGDataLoader
+from torch_geometric.data import Data
+
 import os
 import numpy as np
-import fastmesh as fm
 from fps import fps
 
 
@@ -37,30 +39,17 @@ class MarginLineDataset(Dataset):
         for case_id in self.cases:
             new_case_path = os.path.join(self.data_dir, case_id)
             # Load the .bmesh and .pts files
-            tooth_id = case_id[-2:]
+            tooth_id = case_id.split('.')[0][-2:]
             tooth_enc = np.maximum(0, int(tooth_id) - 10 - 2 * ((int(tooth_id) // 10) - 1))
 
-            bmesh_path = os.path.join(new_case_path, f"{tooth_id}_margin_context.bmesh")
-            margin_path = os.path.join(new_case_path, f"{tooth_id}_margin.pts")
-
-            data_list.append((bmesh_path, margin_path, tooth_enc))
+            data_list.append((new_case_path, tooth_enc))
         return data_list
 
     def __len__(self):
         return len(self.data_list)
-
-    def _load_bmesh_file(self, bmesh_path):
-        """Load .bemsh file, clean vertices using NumPy, and return processed vertices."""
-        # Load the .bemsh file using trimesh
-        vertices_np = fm.load(bmesh_path)[0]
-        points = fps(vertices_np, self.centroids)[0]
-        return points
  
-    def _load_marginline(self, margin_path):
+    def _load_marginline(self, marginline):
         """Load margin line from .pts file."""
-        with open(margin_path, "r") as f:
-            lines = f.readlines()
-            marginline = np.array([list(map(float, line.split())) for line in lines[1:]])
 
         N = marginline.shape[0]
         if N > self.marginNum:
@@ -86,15 +75,21 @@ class MarginLineDataset(Dataset):
         return marginline
 
     def __getitem__(self, idx):
-        bmesh_path, margin_path, tooth_n = self.data_list[idx]
+        path, tooth_n = self.data_list[idx]
+        info = np.load(path)
+        vertices_np = info["context"]
+        marginline = info["margin"]
 
-        marginline = self._load_marginline(margin_path)
-        vertices = self._load_bmesh_file(bmesh_path)
+        vertices = fps(vertices_np, self.centroids)[0]
+        marginline = self._load_marginline(marginline)
+
         # Convert vertices to a PyTorch tensor and apply the view transformation
         tooth_n = torch.tensor(tooth_n, dtype=torch.long)
         marginline = torch.tensor(marginline, dtype=torch.float32).view(-1, 3)
         vertices = torch.tensor(vertices, dtype=torch.float32).view(-1, 3)
-        return vertices, marginline, tooth_n
+        data = Data(pos=vertices, y=marginline, tooth_n=tooth_n)
+        return data
+        # return vertices, marginline, tooth_n
 
 # Usage of the dataset
 def AtomicaMarginLine(args):
@@ -103,7 +98,9 @@ def AtomicaMarginLine(args):
     test_dataset = MarginLineDataset(split='test', args = args)
 
     # Create DataLoader for both
-    train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers)
-    test_loader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers)
+    # train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers)
+    # test_loader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers)
+    train_loader = PyGDataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers, drop_last=True)
+    test_loader = PyGDataLoader(test_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers, drop_last=True)
 
     return train_loader, test_loader

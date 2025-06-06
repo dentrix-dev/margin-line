@@ -15,7 +15,7 @@ def split_data(data_dir, test_size=0.2):
     return train_files, test_files
 
 if __name__ == "__main__":
-    data_dir = "/home/waleed/Documents/3DLearning/marginline/final"
+    data_dir = "/home/waleed/Documents/3DLearning/margin-line/final_02/context_margin_colors_faces_classes"
     train_files, test_files = split_data(data_dir)
     print("Train files:", train_files)
     print("Test files:", test_files)

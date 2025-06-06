@@ -24,11 +24,9 @@ class GraphLayer(nn.Module):
 class GBEncoder(nn.Module):
     def __init__(self, infeatures, outfeatures, k = 32):
         super(GBEncoder, self).__init__() 
-        self.embedding = nn.Embedding(33, 64)
-        self.conv_emb = nn.Conv1d(64, 64, 1)
 
         self.conv1 = nn.Conv1d(infeatures, outfeatures, 1, bias=False)
-        self.conv2 = nn.Conv1d(outfeatures + 64, outfeatures, 1, bias=False)
+        self.conv2 = nn.Conv1d(outfeatures, outfeatures, 1, bias=False)
         self.conv3 = nn.Conv1d(outfeatures, outfeatures, 1, bias=False)
         self.conv4 = nn.Conv1d(1024, 512, 1, bias=False) # for the codeword
         self.bn1 = nn.BatchNorm1d(outfeatures)
@@ -40,12 +38,9 @@ class GBEncoder(nn.Module):
         self.relu = nn.ReLU()
         self.k = k
 
-    def forward(self, x, teeth):
-        emb = self.embedding(teeth).unsqueeze(2)
-        emb = self.conv_emb(emb)
+    def forward(self, x):
         x = torch.cat([x, compute_local_covariance(knn_neighbors(x, self.k)[1])], dim = 2).permute(0, 2, 1)
         x = self.relu(self.bn1(self.conv1(x)))
-        x = torch.cat([x, emb.expand(x.size(0), -1, x.size(2))], dim=1)
         x = self.relu(self.bn2(self.conv2(x)))
         x = self.relu(self.bn3(self.conv3(x)))
         x = self.gl1(x.permute(0, 2, 1))
@@ -94,14 +89,12 @@ class FBDecoder(nn.Module):
 
 class FoldingNet(nn.Module):
     def __init__(self, encoder_in=12, encoder_out=64, num_points=32):
-        super(FoldingNet, self).__init__() 
+        super(FoldingNet, self).__init__()
         self.gbencoder = GBEncoder(encoder_in, encoder_out)
         self.fbdecoder = FBDecoder(num_points)
 
-    def forward(self, data):
-        x, batch, teeth = data.pos, data.batch, data.tooth_n
-        x = x.view(teeth.size(0), -1, 3)
-        codeword = self.gbencoder(x, teeth)
+    def forward(self, x):
+        codeword = self.gbencoder(x)
         repoints = self.fbdecoder(codeword)
 
         return repoints
